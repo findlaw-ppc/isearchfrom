@@ -5,57 +5,68 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ad & SEO Location Simulator</title>
     <style>
-        :root { --primary: #4285f4; --bg: #f8f9fa; }
+        :root { --primary: #4285f4; --bg: #f8f9fa; --warning: #fff4e5; --warning-text: #663c00; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); display: flex; justify-content: center; padding: 20px; }
         .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 500px; }
         h2 { margin-top: 0; color: #202124; font-weight: 600; text-align: center; }
+        
+        /* Incognito Pro-Tip Box */
+        .tip-box { background-color: var(--warning); border-left: 4px solid #ffa117; padding: 15px; margin-bottom: 20px; border-radius: 4px; }
+        .tip-box h4 { margin: 0 0 5px 0; color: var(--warning-text); font-size: 14px; display: flex; align-items: center; }
+        .tip-box p { margin: 0; font-size: 13px; color: var(--warning-text); line-height: 1.4; }
+
         label { display: block; margin-top: 15px; font-size: 14px; font-weight: bold; color: #5f6368; }
-        input, select { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #dadce0; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #dadce0; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .toggle-group { display: flex; align-items: center; margin-top: 20px; gap: 10px; cursor: pointer; }
-        .btn { width: 100%; padding: 14px; margin-top: 25px; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .toggle-group { display: flex; align-items: center; margin-top: 20px; gap: 10px; cursor: pointer; font-size: 14px; }
+        
+        .btn-group { display: flex; gap: 10px; margin-top: 25px; }
+        .btn { flex: 2; padding: 14px; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn-alt { flex: 1; padding: 14px; background-color: #e8f0fe; color: var(--primary); border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
         .btn:hover { background-color: #357ae8; }
-        .hint { font-size: 12px; color: #70757a; margin-top: 4px; line-height: 1.4; }
+        .hint { font-size: 12px; color: #70757a; margin-top: 4px; }
     </style>
 </head>
 <body>
 
 <div class="card">
+    <div class="tip-box">
+        <h4>🕶️ Pro-Tip: Use Incognito Mode</h4>
+        <p>To see unbiased ads, open this tool in an Incognito window or right-click the button and select "Open in Incognito".</p>
+    </div>
+
     <h2>Search Simulator</h2>
     
     <label>Search Query</label>
-    <input type="text" id="query" placeholder="e.g. personal injury lawyer" required>
+    <input type="text" id="query" placeholder="e.g. car insurance miami" required>
 
     <label>City/Region (Canonical Name)</label>
     <input type="text" id="location" placeholder="e.g. Austin,Texas,United States" value="New York,New York,United States">
-    <div class="hint">Format: [City],[State],[Country]</div>
+    <div class="hint">Check <a href="https://developers.google.com/google-ads/api/reference/data/geotargets" target="_blank">Google Geotargets</a> for exact names.</div>
 
     <div class="row">
-        <div>
-            <label>Country (gl)</label>
-            <input type="text" id="country" value="us" maxlength="2">
-        </div>
-        <div>
-            <label>Language (hl)</label>
-            <input type="text" id="language" value="en" maxlength="2">
-        </div>
+        <div><label>Country (gl)</label><input type="text" id="country" value="us"></div>
+        <div><label>Language (hl)</label><input type="text" id="language" value="en"></div>
     </div>
 
     <label class="toggle-group">
         <input type="checkbox" id="cleanWeb" checked>
-        <span>Hide AI Overviews (Classic Web View)</span>
+        <span>Classic Web View (No AI)</span>
     </label>
 
     <label class="toggle-group">
         <input type="checkbox" id="adMode">
-        <span>Enable Ad Research Mode (adtest)</span>
+        <span>Ad Research Mode (adtest=on)</span>
     </label>
 
-    <button class="btn" onclick="launchSearch()">Simulate Google Search</button>
+    <div class="btn-group">
+        <button class="btn" onclick="launchSearch(false)">Launch Search</button>
+        <button class="btn-alt" onclick="launchSearch(true)">Copy URL</button>
+    </div>
 </div>
 
 <script>
-    function launchSearch() {
+    function getFinalUrl() {
         const query = encodeURIComponent(document.getElementById('query').value);
         const location = document.getElementById('location').value.trim();
         const country = document.getElementById('country').value.trim().toLowerCase();
@@ -63,32 +74,34 @@
         const useCleanWeb = document.getElementById('cleanWeb').checked;
         const useAdMode = document.getElementById('adMode').checked;
 
-        if (!query) return alert("Please enter a search term.");
+        if (!query) { alert("Please enter a search term."); return null; }
 
-        // 1. Generate UULE (The Location Secret)
         const uule = generateUule(location);
+        let url = `https://www.google.com/search?q=${query}&gl=${country}&hl=${language}&uule=${uule}&pws=0`;
+        
+        if (useCleanWeb) url += "&udm=14";
+        if (useAdMode) url += "&adtest=on";
+        
+        return url;
+    }
 
-        // 2. Build Base URL
-        let finalUrl = `https://www.google.com/search?q=${query}&gl=${country}&hl=${language}&uule=${uule}&pws=0`;
+    function launchSearch(copyOnly) {
+        const url = getFinalUrl();
+        if (!url) return;
 
-        // 3. Append specialized parameters
-        if (useCleanWeb) finalUrl += "&udm=14"; // Forces traditional "Web" tab
-        if (useAdMode) finalUrl += "&adtest=on"; // Signals Google for ad verification
-
-        // 4. Open in new tab
-        window.open(finalUrl, '_blank');
+        if (copyOnly) {
+            navigator.clipboard.writeText(url);
+            alert("URL Copied! Paste this into an Incognito window.");
+        } else {
+            window.open(url, '_blank');
+        }
     }
 
     function generateUule(city) {
         const key = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
         if (!city) return "";
-        
-        // Canonical mapping: Secret Character is the char at index of string length
         const secretChar = key[city.length] || "A"; 
-        
-        // Base64 encode the string (handling UTF-8)
         const encodedData = btoa(unescape(encodeURIComponent(city)));
-        
         return `w+CAIQICI${secretChar}${encodedData}`;
     }
 </script>
