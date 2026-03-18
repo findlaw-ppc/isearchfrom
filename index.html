@@ -2,54 +2,96 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Private Search Simulator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ad & SEO Location Simulator</title>
     <style>
-        body { font-family: sans-serif; max-width: 500px; margin: 50px auto; line-height: 1.6; }
-        input, select, button { width: 100%; padding: 10px; margin: 5px 0 15px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #4285f4; color: white; border: none; cursor: pointer; font-weight: bold; }
-        button:hover { background-color: #357ae8; }
+        :root { --primary: #4285f4; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 500px; }
+        h2 { margin-top: 0; color: #202124; font-weight: 600; text-align: center; }
+        label { display: block; margin-top: 15px; font-size: 14px; font-weight: bold; color: #5f6368; }
+        input, select { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #dadce0; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .toggle-group { display: flex; align-items: center; margin-top: 20px; gap: 10px; cursor: pointer; }
+        .btn { width: 100%; padding: 14px; margin-top: 25px; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .btn:hover { background-color: #357ae8; }
+        .hint { font-size: 12px; color: #70757a; margin-top: 4px; line-height: 1.4; }
     </style>
 </head>
 <body>
-    <h2>Search Location Simulator</h2>
-    <label>Search Query:</label>
-    <input type="text" id="query" placeholder="e.g. coffee shop">
 
-    <label>City (Canonical Name):</label>
-    <input type="text" id="location" placeholder="e.g. London,England,United Kingdom">
+<div class="card">
+    <h2>Search Simulator</h2>
+    
+    <label>Search Query</label>
+    <input type="text" id="query" placeholder="e.g. personal injury lawyer" required>
 
-    <label>Country Code (gl):</label>
-    <input type="text" id="country" value="us">
+    <label>City/Region (Canonical Name)</label>
+    <input type="text" id="location" placeholder="e.g. Austin,Texas,United States" value="New York,New York,United States">
+    <div class="hint">Format: [City],[State],[Country]</div>
 
-    <label>Language (hl):</label>
-    <input type="text" id="language" value="en">
+    <div class="row">
+        <div>
+            <label>Country (gl)</label>
+            <input type="text" id="country" value="us" maxlength="2">
+        </div>
+        <div>
+            <label>Language (hl)</label>
+            <input type="text" id="language" value="en" maxlength="2">
+        </div>
+    </div>
 
-    <button onclick="generateSearch()">Open Google Search</button>
+    <label class="toggle-group">
+        <input type="checkbox" id="cleanWeb" checked>
+        <span>Hide AI Overviews (Classic Web View)</span>
+    </label>
 
-    <script>
-        function generateSearch() {
-            const query = encodeURIComponent(document.getElementById('query').value);
-            const location = document.getElementById('location').value;
-            const country = document.getElementById('country').value;
-            const language = document.getElementById('language').value;
+    <label class="toggle-group">
+        <input type="checkbox" id="adMode">
+        <span>Enable Ad Research Mode (adtest)</span>
+    </label>
 
-            // Generate the UULE parameter
-            const uule = createUule(location);
-            
-            // Build the final Google URL
-            // &pws=0 removes personalization
-            // &udm=14 forces "Web" view (no AI Overviews)
-            const url = `https://www.google.com/search?q=${query}&gl=${country}&hl=${language}&uule=${uule}&pws=0&udm=14`;
-            
-            window.open(url, '_blank');
-        }
+    <button class="btn" onclick="launchSearch()">Simulate Google Search</button>
+</div>
 
-        function createUule(name) {
-            const key = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-            const secretChar = key[name.length];
-            const base64Name = btoa(name);
-            return `w+CAIQICI${secretChar}${base64Name}`;
-        }
-    </script>
+<script>
+    function launchSearch() {
+        const query = encodeURIComponent(document.getElementById('query').value);
+        const location = document.getElementById('location').value.trim();
+        const country = document.getElementById('country').value.trim().toLowerCase();
+        const language = document.getElementById('language').value.trim().toLowerCase();
+        const useCleanWeb = document.getElementById('cleanWeb').checked;
+        const useAdMode = document.getElementById('adMode').checked;
+
+        if (!query) return alert("Please enter a search term.");
+
+        // 1. Generate UULE (The Location Secret)
+        const uule = generateUule(location);
+
+        // 2. Build Base URL
+        let finalUrl = `https://www.google.com/search?q=${query}&gl=${country}&hl=${language}&uule=${uule}&pws=0`;
+
+        // 3. Append specialized parameters
+        if (useCleanWeb) finalUrl += "&udm=14"; // Forces traditional "Web" tab
+        if (useAdMode) finalUrl += "&adtest=on"; // Signals Google for ad verification
+
+        // 4. Open in new tab
+        window.open(finalUrl, '_blank');
+    }
+
+    function generateUule(city) {
+        const key = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+        if (!city) return "";
+        
+        // Canonical mapping: Secret Character is the char at index of string length
+        const secretChar = key[city.length] || "A"; 
+        
+        // Base64 encode the string (handling UTF-8)
+        const encodedData = btoa(unescape(encodeURIComponent(city)));
+        
+        return `w+CAIQICI${secretChar}${encodedData}`;
+    }
+</script>
+
 </body>
 </html>
